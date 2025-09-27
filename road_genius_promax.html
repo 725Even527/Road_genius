@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路线规划（含AI分析）</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f5f7fa; color: #333; line-height: 1.6; padding: 20px; overflow: hidden; }
+        .container { max-width: 1400px; height: 95vh; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; }
+        header { background: linear-gradient(135deg,#4b6cb7 0%,#182848 100%); color: white; padding: 20px; text-align: center; flex-shrink: 0; }
+        h1 { font-size: 2rem; margin-bottom: 10px; }
+        .description { font-size: 1rem; opacity: 0.9; max-width: 700px; margin: 0 auto; }
+        .main-content { display: flex; flex-wrap: wrap; padding: 15px; flex: 1; overflow: hidden; }
+        .settings-panel { flex: 1; min-width: 280px; padding: 15px; background: #f9fafc; border-radius: 8px; margin-right: 15px; margin-bottom: 15px; overflow-y: auto; max-height: 100%; }
+        .grid-viewport { flex: 2; min-width: 500px; overflow: hidden; background: white; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative; }
+        .grid-wrapper { width: 100%; height: 100%; overflow: auto; padding: 10px; }
+        .grid { display: grid; gap: 2px; margin: 0 auto; position: relative; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; color: #2c3e50; }
+        input, select, button { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 8px; }
+        button { background: #4b6cb7; color: white; border: none; cursor: pointer; font-weight: 600; transition: background 0.3s; }
+        button:hover { background: #3a5795; }
+        .cell { width: 40px; height: 40px; background-color: #eef2f7; border: 1px solid #dce4ec; cursor: pointer; position: relative; transition: all 0.2s; }
+        .cell:hover { background-color: #dfe8f3; transform: scale(1.05); z-index: 2; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+        .node { width: 100%; height: 100%; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); overflow: hidden; }
+        .node-name { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; white-space: nowrap; z-index: 3; }
+        .cell:hover .node-name { display: block; }
+        .line-dot { position: absolute; width: 20px; height: 20px; background-color: #ff7e5f; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 1; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 450px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
+        .color-palette { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+        .color-option { width: 35px; height: 35px; border-radius: 6px; cursor: pointer; border: 3px solid transparent; transition: transform 0.2s; }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border-color: #2c3e50; }
+        .instructions { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #4b6cb7; font-size: 14px; }
+        .mode-indicator { display: inline-block; padding: 6px 12px; border-radius: 20px; font-weight: 600; margin-left: 10px; font-size: 14px; }
+        .mode-normal { background: #4CAF50; color: white; }
+        .mode-line { background: #FF5252; color: white; }
+        .line-controls { background: #f9fafc; padding: 12px; border-radius: 8px; margin-top: 12px; border: 1px solid #e0e0e0; }
+        .controls-row { display: flex; gap: 10px; margin-top: 15px; }
+        .controls-row button { flex: 1; }
+        .keyboard-shortcuts { background: #fff8e1; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ffc107; }
+        .keyboard-shortcuts h3 { color: #2c3e50; margin-bottom: 8px; font-size: 16px; }
+        .shortcut-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #eee; }
+        .shortcut-key { background: #f5f5f5; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-weight: bold; }
+        .node-list { background: #f9fafc; padding: 12px; border-radius: 8px; margin-top: 15px; border: 1px solid #e0e0e0; max-height: 200px; overflow-y: auto; }
+        .node-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: white; border-radius: 4px; margin-bottom: 6px; border-left: 4px solid #4b6cb7; }
+        .node-item-color { width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+        .node-item-name { flex: 1; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .node-item-delete { background: #ff5252; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; flex-shrink: 0; }
+        .context-menu { display: none; position: absolute; background: white; border-radius: 6px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); z-index: 1000; min-width: 150px; }
+        .context-menu-item { padding: 10px 15px; cursor: pointer; transition: background 0.2s; }
+        .context-menu-item:hover { background: #f0f5ff; }
+        .context-menu-item.delete { color: #ff5252; }
+        
+        /* AI 面板样式 */
+        .ai-panel { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 15px; margin: 15px; border-radius: 8px; text-align: center; color: #fff; }
+        #ai-evaluate { background: #fff; color: #667eea; border: none; padding: 12px 24px; border-radius: 25px; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 16px; margin: 5px; }
+        #ai-evaluate:hover { background: #f8f9fa; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        #ai-evaluate:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .ai-results { background: white; margin-top: 15px; padding: 20px; border-radius: 8px; text-align: left; max-height: 400px; overflow-y: auto; border: 2px solid #e0e0e0; color: #333; }
+        .ai-loading { text-align: center; color: #666; padding: 20px; }
+        .ai-error { color: #ff5252; text-align: center; padding: 20px; }
+        .ai-success { color: #4CAF50; text-align: center; padding: 10px; }
+        .api-status { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 10px; opacity: 0.95; }
+        
+        /* 直接输入分析区域 */
+        .direct-analysis { background: #f9fafc; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid #e0e0e0; }
+        .direct-analysis textarea { width: 100%; height: 80px; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 14px; resize: vertical; }
+        .direct-analysis button { margin-top: 10px; }
+        
+        @media (max-width: 900px) { .main-content { flex-direction: column; } .settings-panel { margin-right: 0; max-height: 40%; } .grid-viewport { min-width: 100%; max-height: 60%; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>旅游规划</h1>
+            <p class="description">使用网格系统规划您的旅行路线，支持节点和线路的删除功能，并接入大模型进行智能建议</p>
+        </header>
+
+        <div class="main-content">
+            <div class="settings-panel">
+                <h2>网格设置</h2>
+                <div class="form-group"><label for="grid-rows">行数</label><input type="number" id="grid-rows" min="5" max="50" value="20"></div>
+                <div class="form-group"><label for="grid-cols">列数</label><input type="number" id="grid-cols" min="5" max="50" value="25"></div>
+                <div class="form-group"><label for="scale">比例尺</label><select id="scale"><option value="1">1格 = 1公里</option><option value="10" selected>1格 = 10公里</option><option value="100">1格 = 100公里</option></select></div>
+                <button id="create-grid">创建/更新网格</button>
+
+                <div class="line-controls">
+                    <h3>线路设置</h3>
+                    <label>线路颜色</label>
+                    <div class="color-palette" id="line-colors">
+                        <div class="color-option selected" style="background-color: #FF5252;" data-color="#FF5252"></div>
+                        <div class="color-option" style="background-color: #4CAF50;" data-color="#4CAF50"></div>
+                        <div class="color-option" style="background-color: #2196F3;" data-color="#2196F3"></div>
+                        <div class="color-option" style="background-color: #9C27B0;" data-color="#9C27B0"></div>
+                        <div class="color-option" style="background-color: #FFC107;" data-color="#FFC107"></div>
+                    </div>
+                </div>
+
+                <div class="controls-row">
+                    <button id="toggle-line-mode">进入线路模式</button>
+                    <button id="clear-lines">清除所有线路</button>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-top:8px;">
+                    <button id="export-route">导出路线</button>
+                    <input type="file" id="import-file" style="display:none;" accept="application/json">
+                    <button id="import-route">导入路线</button>
+                </div>
+
+                <div class="node-list" id="node-list"><h3>地点列表</h3><div id="node-list-content"></div></div>
+
+                <div class="keyboard-shortcuts">
+                    <h3>键盘快捷键</h3>
+                    <div class="shortcut-item"><span class="shortcut-key">方向键</span><span>缓慢移动画布</span></div>
+                    <div class="shortcut-item"><span class="shortcut-key">Shift + 方向键</span><span>快速移动画布</span></div>
+                    <div class="shortcut-item"><span class="shortcut-key">Alt键</span><span>按住临时进入线路模式</span></div>
+                    <div class="shortcut-item"><span class="shortcut-key">R</span><span>重置视图位置</span></div>
+                    <div class="shortcut-item"><span class="shortcut-key">右键点击</span><span>删除节点或线路点</span></div>
+                </div>
+
+                <div class="instructions"><h3>使用说明</h3><ul><li>设置网格大小和比例尺后点击"创建网格"</li><li>点击网格中的格子添加旅行地点</li><li>为每个地点设置名称、颜色和备注</li><li>进入线路模式后，可以通过拖动鼠标绘制线路</li><li>鼠标悬停在地点上查看备注信息</li><li>右键点击节点或线路点可以删除它们</li></ul></div>
+
+                <!-- AI 分析面板 -->
+                <div class="ai-panel">
+                    <button id="ai-evaluate">🚀 AI路线分析</button>
+                    <div class="api-status">使用通义千问3-Next-80B模型进行智能分析</div>
+                    <div id="ai-results" class="ai-results" style="display:none;"></div>
+                </div>
+                
+                <!-- 直接输入分析区域 -->
+                <div class="direct-analysis">
+                    <h3>直接输入分析</h3>
+                    <textarea id="direct-input" placeholder="请输入路线或分析需求..."></textarea>
+                    <button id="direct-analyze">直接AI分析</button>
+                </div>
+
+            </div>
+
+            <div class="grid-viewport">
+                <div class="grid-wrapper" id="grid-wrapper">
+                    <div class="grid" id="grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="node-modal">
+        <div class="modal-content">
+            <h2>添加旅行地点</h2>
+            <div class="form-group"><label for="node-name">地点名称</label><input type="text" id="node-name" placeholder="输入地点名称"></div>
+            <div class="form-group"><label for="node-note">地点备注</label><input type="text" id="node-note" placeholder="输入地点备注信息"></div>
+            <label>选择颜色</label>
+            <div class="color-palette">
+                <div class="color-option selected" style="background-color: #FF5252;" data-color="#FF5252"></div>
+                <div class="color-option" style="background-color: #4CAF50;" data-color="#4CAF50"></div>
+                <div class="color-option" style="background-color: #2196F3;" data-color="#2196F3"></div>
+                <div class="color-option" style="background-color: #9C27B0;" data-color="#9C27B0"></div>
+                <div class="color-option" style="background-color: #FFC107;" data-color="#FFC107"></div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button id="save-node">保存地点</button>
+                <button id="cancel-node" style="background:#ccc;color:#333;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item delete" id="context-delete">删除</div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+        // 全局变量
+        let gridRows = 20; let gridCols = 25; let scale = 10;
+        let selectedColor = '#FF5252'; let lineColor = '#FF5252';
+        let currentNode = null; let isLineMode = false; let isDrawing = false; let isAltPressed = false;
+        let scrollSpeed = 5; let fastScrollSpeed = 20; let currentScrollSpeed = scrollSpeed; let scrollInterval = null; let activeKeys = {};
+        let nodes = []; // {row,col,name,color,note}
+        let contextMenu = document.getElementById('context-menu'); let contextMenuTarget = null;
+
+        // DOM 元素
+        const gridElement = document.getElementById('grid'); const gridWrapper = document.getElementById('grid-wrapper');
+        const gridRowsInput = document.getElementById('grid-rows'); const gridColsInput = document.getElementById('grid-cols');
+        const scaleSelect = document.getElementById('scale'); const createGridBtn = document.getElementById('create-grid');
+        const nodeModal = document.getElementById('node-modal'); const nodeNameInput = document.getElementById('node-name'); const nodeNoteInput = document.getElementById('node-note');
+        const saveNodeBtn = document.getElementById('save-node'); const cancelNodeBtn = document.getElementById('cancel-node');
+        const toggleLineModeBtn = document.getElementById('toggle-line-mode'); const clearLinesBtn = document.getElementById('clear-lines');
+        const nodeListContent = document.getElementById('node-list-content');
+        const exportBtn = document.getElementById('export-route'); const importBtn = document.getElementById('import-route'); const importFile = document.getElementById('import-file');
+        const aiBtn = document.getElementById('ai-evaluate'); const aiResults = document.getElementById('ai-results');
+        const directInput = document.getElementById('direct-input'); const directAnalyzeBtn = document.getElementById('direct-analyze');
+
+        // 初始化
+        createGrid(); setupKeyboardNavigation();
+
+        // 事件绑定
+        createGridBtn.addEventListener('click', createGrid); scaleSelect.addEventListener('change', updateScale);
+        saveNodeBtn.addEventListener('click', saveNode); cancelNodeBtn.addEventListener('click', closeModal);
+        toggleLineModeBtn.addEventListener('click', toggleLineMode); clearLinesBtn.addEventListener('click', clearLines);
+        document.addEventListener('click', closeContextMenu); document.getElementById('context-delete').addEventListener('click', handleContextDelete);
+        exportBtn.addEventListener('click', exportRoute); importBtn.addEventListener('click', ()=>importFile.click()); importFile.addEventListener('change', handleImportFile);
+        aiBtn.addEventListener('click', onAiEvaluate);
+        directAnalyzeBtn.addEventListener('click', onDirectAnalyze);
+
+        // 颜色选择
+        document.querySelectorAll('.modal-content .color-option').forEach(option=>{ option.addEventListener('click', function(){ document.querySelectorAll('.modal-content .color-option').forEach(opt=>opt.classList.remove('selected')); this.classList.add('selected'); selectedColor = this.getAttribute('data-color'); }); });
+        document.querySelectorAll('#line-colors .color-option').forEach(option=>{ option.addEventListener('click', function(){ document.querySelectorAll('#line-colors .color-option').forEach(opt=>opt.classList.remove('selected')); this.classList.add('selected'); lineColor = this.getAttribute('data-color'); }); });
+
+        // 创建网格
+        function createGrid(){
+            gridRows = parseInt(gridRowsInput.value) || 20; gridCols = parseInt(gridColsInput.value) || 25;
+            gridRows = Math.min(Math.max(gridRows,5),50); gridCols = Math.min(Math.max(gridCols,5),50);
+            gridRowsInput.value = gridRows; gridColsInput.value = gridCols;
+            gridElement.style.gridTemplateRows = `repeat(${gridRows},40px)`; gridElement.style.gridTemplateColumns = `repeat(${gridCols},40px)`;
+            gridElement.innerHTML = '';
+            for(let r=0;r<gridRows;r++){
+                for(let c=0;c<gridCols;c++){
+                    const cell = document.createElement('div'); cell.className='cell'; cell.dataset.row=r; cell.dataset.col=c;
+                    cell.addEventListener('click', function(e){ if(isLineMode || isAltPressed) return; openNodeModal(this); });
+                    cell.addEventListener('contextmenu', function(e){ e.preventDefault(); if(this.querySelector('.node')||this.querySelector('.line-dot')){ contextMenuTarget=this; showContextMenu(e);} });
+                    cell.addEventListener('mousedown', handleLineStart); cell.addEventListener('mouseenter', handleLineDraw); cell.addEventListener('mouseup', handleLineEnd);
+                    gridElement.appendChild(cell);
+                }
+            }
+            recreateNodes();
+        }
+
+        function updateScale(){ scale = parseInt(scaleSelect.value); }
+
+        function openNodeModal(cell){ 
+            if(isLineMode || isAltPressed) return; 
+            currentNode = cell; 
+            nodeNameInput.value = cell.dataset.nodeName || ''; 
+            nodeNoteInput.value = cell.dataset.nodeNote || '';
+            // 选中颜色同步
+            const color = cell.dataset.nodeColor || '#FF5252'; 
+            document.querySelectorAll('.modal-content .color-option').forEach(opt=>opt.classList.remove('selected')); 
+            const found = Array.from(document.querySelectorAll('.modal-content .color-option')).find(o=>o.getAttribute('data-color')===color); 
+            if(found) found.classList.add('selected'); 
+            nodeModal.style.display='flex'; 
+        }
+
+        function closeModal(){ nodeModal.style.display='none'; currentNode=null; }
+
+        function saveNode(){ 
+            if(!currentNode) return; 
+            const name=nodeNameInput.value.trim()||'未命名地点'; 
+            const note=nodeNoteInput.value.trim()||'暂无备注'; 
+            currentNode.innerHTML=''; 
+            const node=document.createElement('div'); 
+            node.className='node'; 
+            node.style.backgroundColor = selectedColor; 
+            const nameLabel=document.createElement('div'); 
+            nameLabel.className='node-name'; 
+            nameLabel.textContent=name; 
+            nameLabel.title = note; 
+            node.appendChild(nameLabel); 
+            currentNode.appendChild(node); 
+            currentNode.dataset.nodeName=name; 
+            currentNode.dataset.nodeNote=note; 
+            currentNode.dataset.nodeColor=selectedColor; 
+            addNodeToList(currentNode); 
+            closeModal(); 
+        }
+
+        function addNodeToList(cell){ 
+            const row=parseInt(cell.dataset.row); 
+            const col=parseInt(cell.dataset.col); 
+            const name=cell.dataset.nodeName; 
+            const color=cell.dataset.nodeColor; 
+            const note=cell.dataset.nodeNote || '';
+            const existingIndex = nodes.findIndex(n=>n.row===row && n.col===col);
+            if(existingIndex!==-1){ nodes[existingIndex] = {row,col,name,color,note}; } 
+            else { nodes.push({row,col,name,color,note}); }
+            updateNodeList(); 
+        }
+
+        function updateNodeList(){ 
+            nodeListContent.innerHTML=''; 
+            if(nodes.length===0){ 
+                nodeListContent.innerHTML = '<p style="text-align:center;color:#888;">暂无地点</p>'; 
+                return; 
+            }
+            nodes.forEach(node=>{ 
+                const nodeItem=document.createElement('div'); 
+                nodeItem.className='node-item'; 
+                const colorBox=document.createElement('div'); 
+                colorBox.className='node-item-color'; 
+                colorBox.style.backgroundColor=node.color; 
+                const nameSpan=document.createElement('span'); 
+                nameSpan.className='node-item-name'; 
+                nameSpan.textContent = node.name; 
+                const deleteBtn=document.createElement('button'); 
+                deleteBtn.className='node-item-delete'; 
+                deleteBtn.textContent='删除'; 
+                deleteBtn.addEventListener('click', function(e){ e.stopPropagation(); deleteNode(node.row,node.col); }); 
+                nodeItem.appendChild(colorBox); 
+                nodeItem.appendChild(nameSpan); 
+                nodeItem.appendChild(deleteBtn); 
+                nodeListContent.appendChild(nodeItem); 
+            }); 
+        }
+
+        // 完善的删除节点函数
+        function deleteNode(row,col){ 
+            if(!confirm('确定要删除这个地点吗？')) return; 
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`); 
+            if(cell){ 
+                const nodeEl = cell.querySelector('.node'); 
+                if(nodeEl) cell.removeChild(nodeEl); 
+                delete cell.dataset.nodeName; 
+                delete cell.dataset.nodeNote; 
+                delete cell.dataset.nodeColor; 
+            }
+            nodes = nodes.filter(n=>!(n.row===row && n.col===col)); 
+            updateNodeList(); 
+        }
+
+        function recreateNodes(){ 
+            // 先清除line-dot和node
+            document.querySelectorAll('.line-dot').forEach(d=>d.parentElement.removeChild(d)); 
+            document.querySelectorAll('.node').forEach(n=>n.parentElement.removeChild(n));
+            nodes.forEach(node=>{ 
+                const cell = document.querySelector(`.cell[data-row="${node.row}"][data-col="${node.col}"]`); 
+                if(cell){ 
+                    const nodeDiv=document.createElement('div'); 
+                    nodeDiv.className='node'; 
+                    nodeDiv.style.backgroundColor = node.color; 
+                    const nameLabel=document.createElement('div'); 
+                    nameLabel.className='node-name'; 
+                    nameLabel.textContent = node.name; 
+                    nodeDiv.appendChild(nameLabel); 
+                    cell.appendChild(nodeDiv); 
+                    cell.dataset.nodeName=node.name; 
+                    cell.dataset.nodeColor=node.color; 
+                    cell.dataset.nodeNote = node.note || ''; 
+                } 
+            }); 
+        }
+
+        function toggleLineMode(){ 
+            isLineMode = !isLineMode; 
+            toggleLineModeBtn.textContent = isLineMode ? '退出线路模式' : '进入线路模式'; 
+            toggleLineModeBtn.style.background = isLineMode ? '#FF5252' : '#4b6cb7'; 
+        }
+
+        function handleLineStart(e){ if(!(isLineMode||isAltPressed)) return; isDrawing=true; toggleCellLine(e.currentTarget); }
+        function handleLineDraw(e){ if(!(isLineMode||isAltPressed)||!isDrawing) return; toggleCellLine(e.currentTarget); }
+        function handleLineEnd(){ if(!(isLineMode||isAltPressed)) return; isDrawing=false; }
+
+        function toggleCellLine(cell){ 
+            if(cell.querySelector('.node')) return; 
+            if(cell.querySelector('.line-dot')){ 
+                cell.removeChild(cell.querySelector('.line-dot')); 
+            } else { 
+                const lineDot = document.createElement('div'); 
+                lineDot.className='line-dot'; 
+                lineDot.style.backgroundColor = lineColor; 
+                cell.appendChild(lineDot); 
+            }
+        }
+
+        function clearLines(){ if(!confirm('确定要清除所有线路吗？')) return; document.querySelectorAll('.line-dot').forEach(d=>d.parentElement.removeChild(d)); }
+
+        function showContextMenu(e){ contextMenu.style.display='block'; contextMenu.style.left = e.pageX + 'px'; contextMenu.style.top = e.pageY + 'px'; }
+        function closeContextMenu(){ contextMenu.style.display='none'; contextMenuTarget=null; }
+        function handleContextDelete(){ 
+            if(!contextMenuTarget) return; 
+            if(contextMenuTarget.querySelector('.node')){ 
+                const row=parseInt(contextMenuTarget.dataset.row); 
+                const col=parseInt(contextMenuTarget.dataset.col); 
+                deleteNode(row,col); 
+            } else if(contextMenuTarget.querySelector('.line-dot')){ 
+                contextMenuTarget.removeChild(contextMenuTarget.querySelector('.line-dot')); 
+            } 
+            closeContextMenu(); 
+        }
+
+        // 键盘导航
+        function setupKeyboardNavigation(){ 
+            document.addEventListener('keydown', function(e){ 
+                activeKeys[e.key] = true; 
+                if(e.key==='Alt'){ isAltPressed=true; e.preventDefault(); } 
+                if(e.key==='Shift'){ currentScrollSpeed = fastScrollSpeed; } 
+                if(e.key==='r'||e.key==='R'){ gridWrapper.scrollLeft = 0; gridWrapper.scrollTop = 0; } 
+                if(!scrollInterval && (e.key in keyActions)){ startScrolling(); } 
+            });
+            document.addEventListener('keyup', function(e){ 
+                activeKeys[e.key] = false; 
+                if(e.key==='Alt') isAltPressed=false; 
+                if(e.key==='Shift') currentScrollSpeed = scrollSpeed; 
+                if(!isAnyDirectionKeyPressed()) stopScrolling(); 
+            }); 
+            window.addEventListener('contextmenu', function(e){ if(isAltPressed) e.preventDefault(); }); 
+        }
+
+        const keyActions = { 
+            'ArrowUp': ()=>gridWrapper.scrollBy(0,-currentScrollSpeed), 
+            'ArrowDown': ()=>gridWrapper.scrollBy(0,currentScrollSpeed), 
+            'ArrowLeft': ()=>gridWrapper.scrollBy(-currentScrollSpeed,0), 
+            'ArrowRight': ()=>gridWrapper.scrollBy(currentScrollSpeed,0) 
+        };
+        function isAnyDirectionKeyPressed(){ return Object.keys(keyActions).some(k=>activeKeys[k]); }
+        function startScrolling(){ if(scrollInterval) return; scrollInterval = setInterval(()=>{ Object.keys(keyActions).forEach(key=>{ if(activeKeys[key]) keyActions[key](); }); },16); }
+        function stopScrolling(){ if(scrollInterval){ clearInterval(scrollInterval); scrollInterval=null; } }
+
+        // 导出 / 导入 路线数据（包含节点和线路点）
+        function collectRouteData(){ 
+            const nodeData = nodes.map(n=>({row:n.row,col:n.col,name:n.name,color:n.color,note:n.note})); 
+            const lineDots = Array.from(document.querySelectorAll('.line-dot')).map(dot=>{ 
+                const parent = dot.parentElement; 
+                return {row: parseInt(parent.dataset.row), col: parseInt(parent.dataset.col), color: dot.style.backgroundColor}; 
+            }); 
+            return {meta: {rows:gridRows,cols:gridCols,scale:scale}, nodes: nodeData, lines: lineDots, exportedAt: new Date().toISOString()}; 
+        }
+
+        function exportRoute(){ 
+            const data = collectRouteData(); 
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}); 
+            const url = URL.createObjectURL(blob); 
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = 'route_export.json'; 
+            document.body.appendChild(a); 
+            a.click(); 
+            a.remove(); 
+            URL.revokeObjectURL(url); 
+        }
+
+        function handleImportFile(e){ 
+            const file = e.target.files[0]; 
+            if(!file) return; 
+            const reader = new FileReader(); 
+            reader.onload = function(evt){ 
+                try{ 
+                    const data = JSON.parse(evt.target.result); 
+                    importRouteData(data); 
+                }catch(err){ 
+                    alert('导入文件解析失败：'+err.message); 
+                } 
+            }; 
+            reader.readAsText(file); 
+        }
+
+        function importRouteData(data){ 
+            if(!data || !data.meta) return alert('无效的路线数据'); 
+            // 将网格调整为导入值
+            gridRowsInput.value = data.meta.rows || gridRows; 
+            gridColsInput.value = data.meta.cols || gridCols; 
+            scaleSelect.value = data.meta.scale || scale; 
+            createGrid(); // 清空状态
+            nodes = []; 
+            document.querySelectorAll('.line-dot').forEach(d=>d.parentElement.removeChild(d)); 
+            document.querySelectorAll('.node').forEach(n=>n.parentElement.removeChild(n));
+            if(Array.isArray(data.nodes)){ 
+                data.nodes.forEach(n=>{ 
+                    const cell = document.querySelector(`.cell[data-row="${n.row}"][data-col="${n.col}"]`); 
+                    if(cell){ 
+                        const nodeDiv=document.createElement('div'); 
+                        nodeDiv.className='node'; 
+                        nodeDiv.style.backgroundColor = n.color || '#FF5252'; 
+                        const nameLabel=document.createElement('div'); 
+                        nameLabel.className='node-name'; 
+                        nameLabel.textContent = n.name || '未命名'; 
+                        nameLabel.title = n.note || ''; 
+                        nodeDiv.appendChild(nameLabel); 
+                        cell.appendChild(nodeDiv); 
+                        cell.dataset.nodeName = n.name; 
+                        cell.dataset.nodeColor = n.color; 
+                        cell.dataset.nodeNote = n.note || ''; 
+                        nodes.push({row:n.row,col:n.col,name:n.name,color:n.color,note:n.note}); 
+                    } 
+                }); 
+            }
+            if(Array.isArray(data.lines)){ 
+                data.lines.forEach(l=>{ 
+                    const cell = document.querySelector(`.cell[data-row="${l.row}"][data-col="${l.col}"]`); 
+                    if(cell && !cell.querySelector('.node')){ 
+                        const dot=document.createElement('div'); 
+                        dot.className='line-dot'; 
+                        dot.style.backgroundColor = l.color || lineColor; 
+                        cell.appendChild(dot); 
+                    } 
+                }); 
+            }
+            updateNodeList(); 
+        }
+
+        // 调用 ModelScope API
+        async function callModelScope(prompt) {
+            try {
+                const response = await fetch("https://api-inference.modelscope.cn/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer ms-5b5413b9-a2ab-4416-b0bc-82a2c61c3237", // 你的Token
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "Qwen/Qwen3-Next-80B-A3B-Instruct", // 模型ID
+                        messages: [
+                            { role: "system", content: "你是一个擅长旅行规划的专家，请根据用户提供的路线数据给出专业的分析和建议。" },
+                            { role: "user", content: prompt }
+                        ],
+                        stream: false
+                    })
+                });
+
+                const data = await response.json();
+                console.log("模型返回：", data);
+
+                if (data.choices && data.choices.length > 0) {
+                    return data.choices[0].message.content;
+                } else {
+                    return "调用失败，请检查参数或Token";
+                }
+            } catch (error) {
+                console.error("API调用错误：", error);
+                return "调用API时发生错误：" + error.message;
+            }
+        }
+
+        // AI 分析入口（基于路线数据）
+        async function onAiEvaluate(){ 
+            const payload = collectRouteData(); 
+            aiBtn.disabled = true; 
+            aiBtn.textContent = '分析中...'; 
+            aiResults.style.display = 'block'; 
+            aiResults.innerHTML = '<div class="ai-loading">智能分析中，请稍候</div>';
+            
+            try{
+                // 构建提示词
+                const prompt = `你是一个资深旅行规划师。用户给了一个网格化的路线数据（JSON）。请根据节点位置、颜色和线路，给出：1) 行程合理性建议（时间/顺序/绕路）；2) 高优先级优化点（交通/景点排序/节省距离）；3) 风险或注意事项；4) 如果需要，给出一个简短的替代路线建议。\n\n输入数据：\n${JSON.stringify(payload, null, 2)}`;
+                
+                const result = await callModelScope(prompt);
+                aiResults.innerHTML = `<h3>🤖 AI智能路线分析报告</h3><div>${escapeHtml(result).replace(/\n/g,'<br>')}</div>`;
+            }catch(err){ 
+                console.error(err); 
+                aiResults.innerHTML = `<div class="ai-error">分析失败：${escapeHtml(err.message)}</div>`; 
+            }
+            finally{ 
+                aiBtn.disabled = false; 
+                aiBtn.textContent = '🚀 AI路线分析'; 
+            }
+        }
+
+        // 直接输入分析
+        async function onDirectAnalyze(){ 
+            const userInput = directInput.value.trim(); 
+            if (!userInput) { 
+                alert("请输入内容再分析！"); 
+                return; 
+            }
+            
+            directAnalyzeBtn.disabled = true; 
+            directAnalyzeBtn.textContent = '分析中...'; 
+            aiResults.style.display = 'block'; 
+            aiResults.innerHTML = '<div class="ai-loading">智能分析中，请稍候</div>';
+            
+            try{
+                const result = await callModelScope(userInput);
+                aiResults.innerHTML = `<h3>🤖 AI分析结果</h3><div>${escapeHtml(result).replace(/\n/g,'<br>')}</div>`;
+            }catch(err){ 
+                console.error(err); 
+                aiResults.innerHTML = `<div class="ai-error">分析失败：${escapeHtml(err.message)}</div>`; 
+            }
+            finally{ 
+                directAnalyzeBtn.disabled = false; 
+                directAnalyzeBtn.textContent = '直接AI分析'; 
+            }
+        }
+
+        function escapeHtml(s){ 
+            if(!s) return ''; 
+            return String(s).replace(/[&<>"]+/g, function(ch){ 
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]; 
+            }); 
+        }
+
+    });
+    </script>
+</body>
+</html>

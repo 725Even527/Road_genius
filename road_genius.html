@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无误</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            height: 95vh;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .description {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 15px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .settings-panel {
+            flex: 1;
+            min-width: 280px;
+            padding: 15px;
+            background: #f9fafc;
+            border-radius: 8px;
+            margin-right: 15px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            max-height: 100%;
+        }
+        
+        .grid-viewport {
+            flex: 2;
+            min-width: 500px;
+            overflow: hidden;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+        
+        .grid-wrapper {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            padding: 10px;
+        }
+        
+        .grid {
+            display: grid;
+            gap: 2px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        button {
+            background: #4b6cb7;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #3a5795;
+        }
+        
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #eef2f7;
+            border: 1px solid #dce4ec;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        
+        .cell:hover {
+            background-color: #dfe8f3;
+            transform: scale(1.05);
+            z-index: 2;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .node {
+            width: 100%;
+            height: 100%;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        
+        .node-name {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            z-index: 3;
+        }
+        
+        .cell:hover .node-name {
+            display: block;
+        }
+        
+        .line-dot {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #ff7e5f;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        
+        .color-option {
+            width: 35px;
+            height: 35px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: transform 0.2s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.selected {
+            border-color: #2c3e50;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #4b6cb7;
+            font-size: 14px;
+        }
+        
+        .instructions h3 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .instructions ul {
+            padding-left: 18px;
+        }
+        
+        .instructions li {
+            margin-bottom: 6px;
+        }
+        
+        .mode-indicator {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        
+        .mode-normal {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .mode-line {
+            background: #FF5252;
+            color: white;
+        }
+        
+        .line-controls {
+            background: #f9fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .controls-row button {
+            flex: 1;
+        }
+        
+        .keyboard-shortcuts {
+            background: #fff8e1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .keyboard-shortcuts h3 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        
+        .shortcut-key {
+            background: #f5f5f5;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        
+        .node-list {
+            background: #f9fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .node-list h3 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .node-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            border-left: 4px solid #4b6cb7;
+        }
+        
+        .node-item-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        
+        .node-item-name {
+            flex: 1;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .node-item-delete {
+            background: #ff5252;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        
+        .context-menu {
+            display: none;
+            position: absolute;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-width: 150px;
+        }
+        
+        .context-menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .context-menu-item:hover {
+            background: #f0f5ff;
+        }
+        
+        .context-menu-item.delete {
+            color: #ff5252;
+        }
+        
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .settings-panel {
+                margin-right: 0;
+                max-height: 40%;
+            }
+            
+            .grid-viewport {
+                min-width: 100%;
+                max-height: 60%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>旅游规划</h1>
+            <p class="description">使用网格系统规划您的旅行路线，支持节点和线路的删除功能</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="settings-panel">
+                <h2>网格设置</h2>
+                <div class="form-group">
+                    <label for="grid-rows">行数</label>
+                    <input type="number" id="grid-rows" min="5" max="50" value="20">
+                </div>
+                
+                <div class="form-group">
+                    <label for="grid-cols">列数</label>
+                    <input type="number" id="grid-cols" min="5" max="50" value="25">
+                </div>
+                
+                <div class="form-group">
+                    <label for="scale">比例尺</label>
+                    <select id="scale">
+                        <option value="1">1格 = 1公里</option>
+                        <option value="10" selected>1格 = 10公里</option>
+                        <option value="100">1格 = 100公里</option>
+                    </select>
+                </div>
+                
+                <button id="create-grid">创建/更新网格</button>
+                
+                <div class="line-controls">
+                    <h3>线路设置</h3>
+                    <label>线路颜色</label>
+                    <div class="color-palette" id="line-colors">
+                        <div class="color-option selected" style="background-color: #FF5252;" data-color="#FF5252"></div>
+                        <div class="color-option" style="background-color: #4CAF50;" data-color="#4CAF50"></div>
+                        <div class="color-option" style="background-color: #2196F3;" data-color="#2196F3"></div>
+                        <div class="color-option" style="background-color: #9C27B0;" data-color="#9C27B0"></div>
+                        <div class="color-option" style="background-color: #FFC107;" data-color="#FFC107"></div>
+                    </div>
+                </div>
+                
+                <div class="controls-row">
+                    <button id="toggle-line-mode">进入线路模式</button>
+                    <button id="clear-lines">清除所有线路</button>
+                </div>
+                
+                <div class="node-list" id="node-list">
+                    <h3>地点列表</h3>
+                    <div id="node-list-content">
+                        <!-- 节点列表将在这里动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="keyboard-shortcuts">
+                    <h3>键盘快捷键</h3>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">方向键</span>
+                        <span>缓慢移动画布</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Shift + 方向键</span>
+                        <span>快速移动画布</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">Alt键</span>
+                        <span>按住临时进入线路模式</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">R</span>
+                        <span>重置视图位置</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-key">右键点击</span>
+                        <span>删除节点或线路点</span>
+                    </div>
+                </div>
+                
+                <div class="instructions">
+                    <h3>使用说明</h3>
+                    <ul>
+                        <li>设置网格大小和比例尺后点击"创建网格"</li>
+                        <li>点击网格中的格子添加旅行地点</li>
+                        <li>为每个地点设置名称、颜色和备注</li>
+                        <li>进入线路模式后，可以通过拖动鼠标绘制线路</li>
+                        <li>鼠标悬停在地点上查看备注信息</li>
+                        <li>右键点击节点或线路点可以删除它们</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="grid-viewport">
+                <div class="grid-wrapper" id="grid-wrapper">
+                    <div class="grid" id="grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="node-modal">
+        <div class="modal-content">
+            <h2>添加旅行地点</h2>
+            
+            <div class="form-group">
+                <label for="node-name">地点名称</label>
+                <input type="text" id="node-name" placeholder="输入地点名称">
+            </div>
+            
+            <div class="form-group">
+                <label for="node-note">地点备注</label>
+                <input type="text" id="node-note" placeholder="输入地点备注信息">
+            </div>
+            
+            <label>选择颜色</label>
+            <div class="color-palette">
+                <div class="color-option selected" style="background-color: #FF5252;" data-color="#FF5252"></div>
+                <div class="color-option" style="background-color: #4CAF50;" data-color="#4CAF50"></div>
+                <div class="color-option" style="background-color: #2196F3;" data-color="#2196F3"></div>
+                <div class="color-option" style="background-color: #9C27B0;" data-color="#9C27B0"></div>
+                <div class="color-option" style="background-color: #FFC107;" data-color="#FFC107"></div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="save-node">保存地点</button>
+                <button id="cancel-node" style="background: #ccc;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item delete" id="context-delete">删除</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 全局变量
+            let gridRows = 20;
+            let gridCols = 25;
+            let scale = 10;
+            let selectedColor = '#FF5252';
+            let lineColor = '#FF5252';
+            let currentNode = null;
+            let isLineMode = false;
+            let isDrawing = false;
+            let isAltPressed = false;
+            let scrollSpeed = 5;
+            let fastScrollSpeed = 20;
+            let currentScrollSpeed = scrollSpeed;
+            let scrollInterval = null;
+            let activeKeys = {};
+            let nodes = [];
+            let contextMenu = document.getElementById('context-menu');
+            let contextMenuTarget = null;
+            
+            // DOM元素
+            const gridElement = document.getElementById('grid');
+            const gridWrapper = document.getElementById('grid-wrapper');
+            const gridRowsInput = document.getElementById('grid-rows');
+            const gridColsInput = document.getElementById('grid-cols');
+            const scaleSelect = document.getElementById('scale');
+            const createGridBtn = document.getElementById('create-grid');
+            const nodeModal = document.getElementById('node-modal');
+            const nodeNameInput = document.getElementById('node-name');
+            const nodeNoteInput = document.getElementById('node-note');
+            const saveNodeBtn = document.getElementById('save-node');
+            const cancelNodeBtn = document.getElementById('cancel-node');
+            const toggleLineModeBtn = document.getElementById('toggle-line-mode');
+            const clearLinesBtn = document.getElementById('clear-lines');
+            const nodeListContent = document.getElementById('node-list-content');
+            
+            // 初始化
+            createGrid();
+            setupKeyboardNavigation();
+            
+            // 事件监听
+            createGridBtn.addEventListener('click', createGrid);
+            scaleSelect.addEventListener('change', updateScale);
+            saveNodeBtn.addEventListener('click', saveNode);
+            cancelNodeBtn.addEventListener('click', closeModal);
+            toggleLineModeBtn.addEventListener('click', toggleLineMode);
+            clearLinesBtn.addEventListener('click', clearLines);
+            document.addEventListener('click', closeContextMenu);
+            document.getElementById('context-delete').addEventListener('click', handleContextDelete);
+            
+            // 节点颜色选择
+            document.querySelectorAll('.modal-content .color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.modal-content .color-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    selectedColor = this.getAttribute('data-color');
+                });
+            });
+            
+            // 线路颜色选择
+            document.querySelectorAll('#line-colors .color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('#line-colors .color-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                    lineColor = this.getAttribute('data-color');
+                });
+            });
+            
+            // 创建网格函数
+            function createGrid() {
+                gridRows = parseInt(gridRowsInput.value) || 20;
+                gridCols = parseInt(gridColsInput.value) || 25;
+                
+                // 限制最大网格大小
+                gridRows = Math.min(Math.max(gridRows, 5), 50);
+                gridCols = Math.min(Math.max(gridCols, 5), 50);
+                
+                gridRowsInput.value = gridRows;
+                gridColsInput.value = gridCols;
+                
+                // 设置网格样式
+                gridElement.style.gridTemplateRows = `repeat(${gridRows}, 40px)`;
+                gridElement.style.gridTemplateColumns = `repeat(${gridCols}, 40px)`;
+                
+                // 清空现有网格
+                gridElement.innerHTML = '';
+                
+                // 创建网格单元格
+                for (let r = 0; r < gridRows; r++) {
+                    for (let c = 0; c < gridCols; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = r;
+                        cell.dataset.col = c;
+                        
+                        cell.addEventListener('click', function(e) {
+                            if (isLineMode || isAltPressed) return;
+                            openNodeModal(this);
+                        });
+                        
+                        // 右键菜单
+                        cell.addEventListener('contextmenu', function(e) {
+                            e.preventDefault();
+                            if (this.querySelector('.node') || this.querySelector('.line-dot')) {
+                                contextMenuTarget = this;
+                                showContextMenu(e);
+                            }
+                        });
+                        
+                        // 线路模式下的鼠标事件
+                        cell.addEventListener('mousedown', handleLineStart);
+                        cell.addEventListener('mouseenter', handleLineDraw);
+                        cell.addEventListener('mouseup', handleLineEnd);
+                        
+                        gridElement.appendChild(cell);
+                    }
+                }
+                
+                // 重新创建已存在的节点
+                recreateNodes();
+            }
+            
+            // 更新比例尺
+            function updateScale() {
+                scale = parseInt(scaleSelect.value);
+            }
+            
+            // 打开节点模态框
+            function openNodeModal(cell) {
+                if (isLineMode || isAltPressed) return;
+                currentNode = cell;
+                nodeNameInput.value = cell.dataset.nodeName || '';
+                nodeNoteInput.value = cell.dataset.nodeNote || '';
+                nodeModal.style.display = 'flex';
+            }
+            
+            // 关闭模态框
+            function closeModal() {
+                nodeModal.style.display = 'none';
+                currentNode = null;
+            }
+            
+            // 保存节点
+            function saveNode() {
+                if (!currentNode) return;
+                
+                const name = nodeNameInput.value.trim() || '未命名地点';
+                const note = nodeNoteInput.value.trim() || '暂无备注';
+                
+                // 清除现有节点内容
+                currentNode.innerHTML = '';
+                
+                // 创建节点
+                const node = document.createElement('div');
+                node.className = 'node';
+                node.style.backgroundColor = selectedColor;
+                
+                // 添加地点名称标签
+                const nameLabel = document.createElement('div');
+                nameLabel.className = 'node-name';
+                nameLabel.textContent = name;
+                nameLabel.title = note; // 鼠标悬停时显示备注
+                
+                node.appendChild(nameLabel);
+                currentNode.appendChild(node);
+                
+                // 存储节点信息
+                currentNode.dataset.nodeName = name;
+                currentNode.dataset.nodeNote = note;
+                currentNode.dataset.nodeColor = selectedColor;
+                
+                // 添加到节点列表
+                addNodeToList(currentNode);
+                
+                closeModal();
+            }
+            
+            // 添加节点到列表
+            function addNodeToList(cell) {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const name = cell.dataset.nodeName;
+                const color = cell.dataset.nodeColor;
+                
+                // 检查是否已存在
+                const existingIndex = nodes.findIndex(node => 
+                    node.row === row && node.col === col
+                );
+                
+                if (existingIndex !== -1) {
+                    // 更新现有节点
+                    nodes[existingIndex] = { row, col, name, color };
+                } else {
+                    // 添加新节点
+                    nodes.push({ row, col, name, color });
+                }
+                
+                updateNodeList();
+            }
+            
+            // 更新节点列表显示
+            function updateNodeList() {
+                nodeListContent.innerHTML = '';
+                
+                if (nodes.length === 0) {
+                    nodeListContent.innerHTML = '<p style="text-align: center; color: #888;">暂无地点</p>';
+                    return;
+                }
+                
+                nodes.forEach(node => {
+                    const nodeItem = document.createElement('div');
+                    nodeItem.className = 'node-item';
+                    
+                    const colorBox = document.createElement('div');
+                    colorBox.className = 'node-item-color';
+                    colorBox.style.backgroundColor = node.color;
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'node-item-name';
+                    nameSpan.textContent = node.name;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'node-item-delete';
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteNode(node.row, node.col);
+                    });
+                    
+                    nodeItem.appendChild(colorBox);
+                    nodeItem.appendChild(nameSpan);
+                    nodeItem.appendChild(deleteBtn);
+                    
+                    nodeListContent.appendChild(nodeItem);
+                });
+            }
+            
+            // 删除节点
+            function deleteNode(row, col) {
+                if (!confirm('确定要删除这个地点吗？')) return;
+                
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                if (cell) {
+                    const node = cell.querySelector('.node');
+                    if (node) {
+                        cell.removeChild(node);
+                    }
+                    
+                    // 移除节点数据
+                    delete cell.dataset.nodeName;
+                    delete cell.dataset.nodeNote;
+                    delete cell.dataset.nodeColor;
+                }
+                
+                // 从节点列表中移除
+                nodes = nodes.filter(node => !(node.row === row && node.col === col));
+                updateNodeList();
+            }
+            
+            // 重新创建已存在的节点
+            function recreateNodes() {
+                nodes.forEach(node => {
+                    const cell = document.querySelector(`.cell[data-row="${node.row}"][data-col="${node.col}"]`);
+                    if (cell) {
+                        // 清除现有内容
+                        cell.innerHTML = '';
+                        
+                        // 创建节点
+                        const nodeDiv = document.createElement('div');
+                        nodeDiv.className = 'node';
+                        nodeDiv.style.backgroundColor = node.color;
+                        
+                        // 添加地点名称标签
+                        const nameLabel = document.createElement('div');
+                        nameLabel.className = 'node-name';
+                        nameLabel.textContent = node.name;
+                        
+                        nodeDiv.appendChild(nameLabel);
+                        cell.appendChild(nodeDiv);
+                        
+                        // 存储节点信息
+                        cell.dataset.nodeName = node.name;
+                        cell.dataset.nodeColor = node.color;
+                    }
+                });
+            }
+            
+            // 切换线路模式
+            function toggleLineMode() {
+                isLineMode = !isLineMode;
+                toggleLineModeBtn.textContent = isLineMode ? '退出线路模式' : '进入线路模式';
+                toggleLineModeBtn.style.background = isLineMode ? '#FF5252' : '#4b6cb7';
+            }
+            
+            // 处理线路开始
+            function handleLineStart(e) {
+                if (!(isLineMode || isAltPressed)) return;
+                isDrawing = true;
+                toggleCellLine(e.currentTarget);
+            }
+            
+            // 处理线路绘制
+            function handleLineDraw(e) {
+                if (!(isLineMode || isAltPressed) || !isDrawing) return;
+                toggleCellLine(e.currentTarget);
+            }
+            
+            // 处理线路结束
+            function handleLineEnd() {
+                if (!(isLineMode || isAltPressed)) return;
+                isDrawing = false;
+            }
+            
+            // 切换单元格的线路状态
+            function toggleCellLine(cell) {
+                // 如果已经是节点，则不添加线路标记
+                if (cell.querySelector('.node')) return;
+                
+                // 切换线路标记
+                if (cell.querySelector('.line-dot')) {
+                    cell.removeChild(cell.querySelector('.line-dot'));
+                } else {
+                    const lineDot = document.createElement('div');
+                    lineDot.className = 'line-dot';
+                    lineDot.style.backgroundColor = lineColor;
+                    cell.appendChild(lineDot);
+                }
+            }
+            
+            // 清除所有线路
+            function clearLines() {
+                if (!confirm('确定要清除所有线路吗？')) return;
+                
+                document.querySelectorAll('.line-dot').forEach(dot => {
+                    dot.parentElement.removeChild(dot);
+                });
+            }
+            
+            // 显示右键菜单
+            function showContextMenu(e) {
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = e.pageX + 'px';
+                contextMenu.style.top = e.pageY + 'px';
+            }
+            
+            // 关闭右键菜单
+            function closeContextMenu() {
+                contextMenu.style.display = 'none';
+                contextMenuTarget = null;
+            }
+            
+            // 处理右键删除
+            function handleContextDelete() {
+                if (!contextMenuTarget) return;
+                
+                if (contextMenuTarget.querySelector('.node')) {
+                    // 删除节点
+                    const row = parseInt(contextMenuTarget.dataset.row);
+                    const col = parseInt(contextMenuTarget.dataset.col);
+                    deleteNode(row, col);
+                } else if (contextMenuTarget.querySelector('.line-dot')) {
+                    // 删除线路点
+                    contextMenuTarget.removeChild(contextMenuTarget.querySelector('.line-dot'));
+                }
+                
+                closeContextMenu();
+            }
+            
+            // 设置键盘导航
+            function setupKeyboardNavigation() {
+                // 监听键盘事件
+                document.addEventListener('keydown', function(e) {
+                    // 记录按下的键
+                    activeKeys[e.key] = true;
+                    
+                    // Alt键切换线路模式
+                    if (e.key === 'Alt') {
+                        isAltPressed = true;
+                        e.preventDefault(); // 防止浏览器默认行为
+                    }
+                    
+                    // Shift键加速滚动
+                    if (e.key === 'Shift') {
+                        currentScrollSpeed = fastScrollSpeed;
+                    }
+                    
+                    // R键重置视图
+                    if (e.key === 'r' || e.key === 'R') {
+                        gridWrapper.scrollLeft = 0;
+                        gridWrapper.scrollTop = 0;
+                    }
+                    
+                    // 启动滚动
+                    if (!scrollInterval && (e.key in keyActions)) {
+                        startScrolling();
+                    }
+                });
+                
+                document.addEventListener('keyup', function(e) {
+                    // 移除释放的键
+                    activeKeys[e.key] = false;
+                    
+                    // Alt键释放
+                    if (e.key === 'Alt') {
+                        isAltPressed = false;
+                    }
+                    
+                    // Shift键释放
+                    if (e.key === 'Shift') {
+                        currentScrollSpeed = scrollSpeed;
+                    }
+                    
+                    // 如果没有方向键按下，停止滚动
+                    if (!isAnyDirectionKeyPressed()) {
+                        stopScrolling();
+                    }
+                });
+                
+                // 防止Alt键触发浏览器菜单
+                window.addEventListener('contextmenu', function(e) {
+                    if (isAltPressed) {
+                        e.preventDefault();
+                    }
+                });
+            }
+            
+            // 键盘按键对应的滚动动作
+            const keyActions = {
+                'ArrowUp': () => gridWrapper.scrollBy(0, -currentScrollSpeed),
+                'ArrowDown': () => gridWrapper.scrollBy(0, currentScrollSpeed),
+                'ArrowLeft': () => gridWrapper.scrollBy(-currentScrollSpeed, 0),
+                'ArrowRight': () => gridWrapper.scrollBy(currentScrollSpeed, 0)
+            };
+            
+            // 检查是否有方向键被按下
+            function isAnyDirectionKeyPressed() {
+                return Object.keys(keyActions).some(key => activeKeys[key]);
+            }
+            
+            // 开始滚动
+            function startScrolling() {
+                if (scrollInterval) return;
+                
+                scrollInterval = setInterval(() => {
+                    // 执行所有按下的方向键对应的动作
+                    Object.keys(keyActions).forEach(key => {
+                        if (activeKeys[key]) {
+                            keyActions[key]();
+                        }
+                    });
+                }, 16); // 约60fps
+            }
+            
+            // 停止滚动
+            function stopScrolling() {
+                if (scrollInterval) {
+                    clearInterval(scrollInterval);
+                    scrollInterval = null;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
